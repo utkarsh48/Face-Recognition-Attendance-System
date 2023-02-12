@@ -17,29 +17,35 @@ class SQL:
 
         self.DB = mysql.connector.connect(host = self.host,user=self.user,passwd=self.password,database=self.database)
 
-    def update(self, eid, status):
+    def update(self, eid):
         self.mydb = self.DB.cursor()
-        self.sql = "INSERT INTO `Attendance`.`Attendance_"+status+"` VALUES ("+eid+",NOW())"
+        self.sql = f"INSERT INTO `Attendance`.`Logs` VALUES ({eid}, NOW())"
         self.mydb.execute(self.sql)
         self.DB.commit()
 
     def new_id(self, eid, ename, edesg):
         self.mydb = self.DB.cursor()
-        self.sql = "INSERT INTO `Attendance`.`Users` VALUES (" + eid + ",\""+ ename+ "\","+ "\""+ edesg +"\",NOW())"
+        self.sql = f"INSERT INTO `Attendance`.`Users` VALUES ({eid}, \"{ename}\", \"{edesg}\", NOW())"
         self.mydb.execute(self.sql)
         self.DB.commit()
+
+    def clear_old_data(self):
+        self.mydb = self.DB.cursor()
+        self.sql = f"DELETE FROM `Attendance`.`Logs` WHERE `APPEARANCE` < NOW() - INTERVAL 30 DAY"
+        self.mydb.execute(self.sql)
+        self.DB.commit()
+
 
 class Train(SQL):
     name = ""
     user_list = []
 
-    def __init__(self, im_source, usr, ref,cam,st):
+    def __init__(self, im_source, usr, ref,cam):
         self.max = 0.0
         self.image_source = im_source
         self.user_path = usr
         self.reference = ref
         self.cam_index = cam
-        self.status = st
         self.flag = True
     def check_user(self, dirname):
         if (dirname in os.listdir(self.image_source)):
@@ -86,7 +92,8 @@ class Train(SQL):
         self.desg = input("Enter Designation Name : ")
         self.emp_id = input("Enter the ID : ")
         self.check_user(self.emp_id)
-        os.system("mkdir Images/"+self.emp_id)
+        # os.system("mkdir Images/"+self.emp_id)
+        os.makedirs("Images/"+self.emp_id, exist_ok=True)
         if self.flag:
             self.update_list(self.emp_id)
             SQL.new_id(self,self.emp_id,self.name,self.desg)
@@ -136,7 +143,8 @@ class Recognise(Train):
                     self.max = 100 - confidence
 
                 if (id != 0) and (prev != id):
-                    SQL.update(self, self.user_list[id], self.status)
+                    SQL.update(self, self.user_list[id])
+                    # SQL.get(self, self.user_list[id], self.status)
                     prev = id
 
 
